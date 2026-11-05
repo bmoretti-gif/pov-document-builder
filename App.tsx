@@ -16,6 +16,7 @@ import {
 } from './constants';
 import { formatContent } from './services/formatter';
 import defaultLibrary from './default-library.json';
+import portugueseLibrary from './default-translations-pt.json';
 import { loadDocsSnapshot } from './services/docs-client.mjs';
 import { loadLibrary } from './services/library';
 import { documentLabel, translationKey, localeFor, createLocalTranslator, translateMarkup, type DocumentLanguage } from './services/languages';
@@ -110,7 +111,8 @@ const App: React.FC = () => {
   const [notice, setNotice] = useState('');
   const [docsCheckedAt, setDocsCheckedAt] = useState('');
   const [docsReport, setDocsReport] = useState<{url:string;content:string;error?:string}[]>([]);
-  const t = (text:string) => documentLanguage === 'en' ? text : documentTranslations[translationKey(text,documentLanguage)] ?? documentLabel(text,documentLanguage);
+  const effectiveTranslations: Record<string,string> = useMemo(() => ({...portugueseLibrary, ...documentTranslations}), [documentTranslations]);
+  const t = (text:string) => documentLanguage === 'en' ? text : effectiveTranslations[translationKey(text,documentLanguage)] ?? documentLabel(text,documentLanguage);
 
   
   const [activeModal, setActiveModal] = useState<'content' | 'pov-info' | 'custom-port' | 'criteria' | 'delete-snippet' | null>(null);
@@ -370,14 +372,16 @@ const App: React.FC = () => {
     ...mergedPorts.flatMap(p => [p.source,p.destination,p.purpose]),
     ...sessionCriteria.flatMap(c => [c.criteria,c.details])
   ])).filter(text => text && documentLabel(text,documentLanguage) === text);
-  const missingTranslations = documentLanguage === 'en' ? [] : translationTexts.filter(text => !documentTranslations[translationKey(text,documentLanguage)]);
+  const missingTranslations = documentLanguage === 'en' ? [] : translationTexts.filter(text => !effectiveTranslations[translationKey(text,documentLanguage)]);
   const translateSelected = async (targetLanguage: DocumentLanguage = documentLanguage) => {
     if (targetLanguage === 'en') return;
+    const pending = translationTexts.filter(text => documentLabel(text,targetLanguage) === text && !effectiveTranslations[translationKey(text,targetLanguage)]);
+    if (!pending.length) { setNotice(''); setLanguagePanel(false); return; }
     setBusy(true); setNotice('Traduzindo conte?do selecionado?');
     let translator;
     try {
       translator = await createLocalTranslator(targetLanguage);
-      for (const text of translationTexts.filter(text => documentLabel(text,targetLanguage) === text && !documentTranslations[translationKey(text,targetLanguage)])) {
+      for (const text of pending) {
         const value = await translateMarkup(text, x => translator!.translate(x));
         setDocumentTranslations(prev => ({...prev,[translationKey(text,targetLanguage)]:value}));
       }
@@ -646,7 +650,7 @@ const App: React.FC = () => {
           {languagePanel && documentLanguage !== 'en' && <div className="space-y-3 py-4">
             <p>Traduza ou revise o conte?do abaixo para o idioma selecionado. Comandos, URLs e portas devem ser preservados.</p>
             <button disabled={busy} onClick={() => void translateSelected()} className="border rounded p-2">{busy ? 'Traduzindo?' : 'Traduzir no Chrome (quando dispon?vel)'}</button>
-            {translationTexts.map(text => <label key={text} className="block"><pre className="whitespace-pre-wrap text-xs">{text}</pre><textarea aria-label="Tradu??o" className="border w-full p-2" rows={3} value={documentTranslations[translationKey(text,documentLanguage)] ?? ''} onChange={e => setDocumentTranslations(prev => ({...prev,[translationKey(text,documentLanguage)]:e.target.value}))}/></label>)}
+            {translationTexts.map(text => <label key={text} className="block"><pre className="whitespace-pre-wrap text-xs">{text}</pre><textarea aria-label="Tradu??o" className="border w-full p-2" rows={3} value={effectiveTranslations[translationKey(text,documentLanguage)] ?? ''} onChange={e => setDocumentTranslations(prev => ({...prev,[translationKey(text,documentLanguage)]:e.target.value}))}/></label>)}
           </div>}
 
         </div>

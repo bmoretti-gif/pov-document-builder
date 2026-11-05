@@ -15,3 +15,6 @@ tests:
   - id: pov-compact-documentation-panel
     command: node tests/documentation-panel.test.mjs
     expected_exit_code: 0
+  - id: pov-portuguese-library
+    command: node tests/portuguese-library.test.mjs
+    expected_exit_code: 0
