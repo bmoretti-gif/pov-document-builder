@@ -18,7 +18,7 @@ export const CATEGORIES = [
  * Points to logo.png in the project root. 
  * For local development, ensure logo.png is present in your folder.
  */
-export const BRAND_LOGO_URL = 'logo.png';
+export const BRAND_LOGO_URL = `${import.meta.env.BASE_URL}logo.png`;
 
 export const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   'ENVIRONMENT': (

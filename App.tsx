@@ -15,6 +15,7 @@ import {
 } from './constants';
 import { formatContent } from './services/formatter';
 import defaultLibrary from './default-library.json';
+import { loadDocsSnapshot } from './services/docs-client.mjs';
 import { loadLibrary } from './services/library';
 import { documentLabel, translationKey, localeFor, createLocalTranslator, translateMarkup, type DocumentLanguage } from './services/languages';
 
@@ -385,11 +386,19 @@ const App: React.FC = () => {
     setNotice('Consultando documenta??o oficial atual?');
     try {
       const urls = Array.from(new Set(checkedItems.flatMap(k => allContent[k]?.content.match(/https:\/\/docs\.cribl\.io\/[^\s)]+/g) ?? [])));
-      const response = await fetch('/api/cribl-docs', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({urls})});
-      if (!response.ok) throw new Error('Consulta indispon?vel. Execute o aplicativo com npm run dev.');
-      const result = await response.json(); setDocsReport(result.pages);
-      setNotice(`Consulta: ${result.checkedAt}. Leia as p?ginas atuais e revise os snippets e portas antes de exportar.`);
-      if(result.pages.some((p:{error?:string}) => p.error)) { setNotice('Uma ou mais refer?ncias n?o puderam ser consultadas. Revise as falhas antes de exportar.'); return false; }
+      const staticSite = !import.meta.env.DEV;
+      let result;
+      if(staticSite) {
+        result = await loadDocsSnapshot(import.meta.env.BASE_URL);
+      } else {
+        const response = await fetch('/api/cribl-docs', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({urls})});
+        if(!response.ok) throw new Error('Consulta a documentacao indisponivel.');
+        result = await response.json();
+      }
+      setDocsReport(result.pages);
+      const stale = Date.now() - Date.parse(result.checkedAt) > 48 * 60 * 60 * 1000;
+      const failures = result.pages.filter((p:{error?:string}) => p.error).length;
+      setNotice(`Documentacao consultada em ${new Date(result.checkedAt).toLocaleString()}. ${staticSite ? 'Atualizada pelo GitHub Actions a cada publicacao e diariamente.' : 'Consulta ao vivo.'} ${stale ? 'Atencao: consulta com mais de 48 horas.' : ''} ${failures ? `${failures} referencias indisponiveis; abra os links oficiais para revisar.` : ''} Revise os snippets e portas antes de exportar.`);
       return true;
     } catch(e) { setNotice(String(e)); return false; }
   };

@@ -1,0 +1,13 @@
+﻿import {readFile,writeFile,mkdir} from 'node:fs/promises';
+import {criblDocsPlugin} from '../services/cribl-docs.mjs';
+let handler;
+criblDocsPlugin().configureServer({middlewares:{use:(_path,fn)=>handler=fn}});
+const library=JSON.parse(await readFile(new URL('../default-library.json',import.meta.url),'utf8'));
+const urls=[...new Set(Object.values(library).flatMap(item=>item.content.match(/https:\/\/docs\.cribl\.io\/[^\s)"<>]+/g)??[]))];
+const request={method:'POST',async *[Symbol.asyncIterator](){yield JSON.stringify({urls});}};
+let result;
+await handler(request,{setHeader(){},end(body){result=JSON.parse(body);}});
+if(!result?.pages?.length) throw new Error(result?.error??'Documentation snapshot empty');
+await mkdir(new URL('../public/',import.meta.url),{recursive:true});
+await writeFile(new URL('../public/cribl-docs-snapshot.json',import.meta.url),JSON.stringify(result));
+console.log(`Documentation snapshot: ${result.pages.length} pages, ${result.pages.filter(p=>p.error).length} failures, ${result.checkedAt}`);
