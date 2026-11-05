@@ -4,6 +4,9 @@ export interface ContentItem {
   label: string;
   title: string;
   content: string;
+  origin?: 'official';
+  sourceKind?: string;
+  documentationUrl?: string;
 }
 
 export type CategoryType = 
@@ -11,6 +14,7 @@ export type CategoryType =
   | 'REQUIRED PORTS' 
   | 'SENDERS & DATASOURCES' 
   | 'CRIBL SOURCE CONFIGS' 
+  | 'CRIBL COLLECTOR CONFIGS'
   | 'RECEIVERS & DATA DESTINATIONS' 
   | 'CRIBL DESTINATION CONFIGS' 
   | 'SEARCH' 

@@ -21,3 +21,6 @@ tests:
   - id: pov-spanish-library
     command: node tests/spanish-library.test.mjs
     expected_exit_code: 0
+  - id: pov-official-source-catalog
+    command: node tests/source-catalog.test.mjs
+    expected_exit_code: 0

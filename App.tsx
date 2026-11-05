@@ -19,7 +19,7 @@ import defaultLibrary from './default-library.json';
 import portugueseLibrary from './default-translations-pt.json';
 import spanishLibrary from './default-translations-es.json';
 import { loadDocsSnapshot } from './services/docs-client.mjs';
-import { loadLibrary } from './services/library';
+import { loadLibrary, syncOfficialCatalog } from './services/library';
 import { documentLabel, translationKey, localeFor, createLocalTranslator, translateMarkup, type DocumentLanguage } from './services/languages';
 
 const STORAGE_KEY_LIB = 'cribl_library_v6';
@@ -112,7 +112,10 @@ const App: React.FC = () => {
   const [notice, setNotice] = useState('');
   const [docsCheckedAt, setDocsCheckedAt] = useState('');
   const [docsReport, setDocsReport] = useState<{url:string;content:string;error?:string}[]>([]);
-  const effectiveTranslations: Record<string,string> = useMemo(() => ({...portugueseLibrary, ...spanishLibrary, ...documentTranslations}), [documentTranslations]);
+  const [catalogTranslations, setCatalogTranslations] = useState<Record<string,string>>({});
+  const [catalogSummary, setCatalogSummary] = useState('');
+  const [librarySearch, setLibrarySearch] = useState('');
+  const effectiveTranslations: Record<string,string> = useMemo(() => ({...portugueseLibrary, ...spanishLibrary, ...catalogTranslations, ...documentTranslations}), [documentTranslations, catalogTranslations]);
   const t = (text:string) => documentLanguage === 'en' ? text : effectiveTranslations[translationKey(text,documentLanguage)] ?? documentLabel(text,documentLanguage);
 
   
@@ -192,6 +195,22 @@ const App: React.FC = () => {
       sessionCustomPorts: customPorts, sessionSuccessCriteria: sessionCriteria, documentLanguage, documentTranslations
     }));
   }, [allContent, checkedItems, povInfo, architectureChecked, architectureImage, customPorts, sessionCriteria, documentLanguage, documentTranslations, isInitialized]);
+
+  useEffect(() => {
+    if (!isInitialized) return;
+    let active = true;
+    fetch(`${import.meta.env.BASE_URL}source-catalog.json`, {cache:'no-store'})
+      .then(response => { if(!response.ok) throw new Error('Official Sources catalog unavailable'); return response.json(); })
+      .then(catalog => {
+        if(!active) return;
+        setCatalogTranslations(catalog.translations);
+        const entries = Object.values(catalog.entries) as ContentItem[];
+        setCatalogSummary(`${entries.filter(e => e.sourceKind !== 'collector').length} Sources / ${entries.filter(e => e.sourceKind === 'collector').length} Collectors · ${new Date(catalog.checkedAt).toLocaleDateString('pt-BR')}`);
+        setAllContent(previous => syncOfficialCatalog(localStorage, previous, catalog.entries));
+      })
+      .catch(() => { if(active) setCatalogSummary('Catálogo oficial indisponível; biblioteca local preservada.'); });
+    return () => { active = false; };
+  }, [isInitialized]);
 
   const handleResetSession = () => {
     setCheckedItems([]);
@@ -488,17 +507,21 @@ const App: React.FC = () => {
           </button>
         </div>
 
+        <div className="px-6 pb-3 space-y-2">
+          <input aria-label="Buscar na biblioteca" placeholder="Buscar Source, Collector ou roteiro…" value={librarySearch} onChange={e => setLibrarySearch(e.target.value)} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs" />
+          {catalogSummary && <p className="text-[10px] text-slate-500">{catalogSummary} · <a href="https://docs.cribl.io/stream/sources/" target="_blank" rel="noopener noreferrer" className="text-[#2596be]">Catálogo oficial ↗</a></p>}
+        </div>
         <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-4">
           {CATEGORIES.map(category => (
             <div key={category} className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
               <div onClick={() => setCollapsedCategories(prev => ({...prev, [category]: !prev[category]}))} className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-slate-50 transition group select-none">
                 <div className="flex items-center gap-3">
-                  <div className="text-slate-400 group-hover:text-[#2596be] transition-colors">{CATEGORY_ICONS[category]}</div>
+                  <div className="text-slate-400 group-hover:text-[#2596be] transition-colors">{CATEGORY_ICONS[category] || CATEGORY_ICONS['CRIBL SOURCE CONFIGS']}</div>
                   <span className="text-[11px] font-black text-slate-700 uppercase tracking-widest">{category}</span>
                 </div>
                 <svg className={`w-4 h-4 text-slate-300 transition-transform ${collapsedCategories[category] ? '' : 'rotate-180'}`} fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7"/></svg>
               </div>
-              {!collapsedCategories[category] && (
+              {(!collapsedCategories[category] || !!librarySearch) && (
                 <div className="px-4 pb-4 space-y-2 border-t border-slate-50 pt-3">
                   {category === 'ENVIRONMENT' && (
                     <div className="p-3 bg-slate-50 rounded-lg border border-slate-100 mb-2 space-y-3">
@@ -569,10 +592,13 @@ const App: React.FC = () => {
                     <button onClick={() => { setEditingCriteriaIndex(null); setTempCriteria({ criteria: SUCCESS_CRITERIA_OPTIONS[0], completed: false, details: '' }); setActiveModal('criteria'); }} className="w-full py-2 bg-slate-100 border border-slate-200 rounded-lg text-[9px] font-black uppercase text-slate-600 mb-2 hover:bg-slate-200 transition-colors">Add Success Criteria</button>
                   )}
                   
-                  {category !== 'SUCCESS CRITERIA' && sortedContentKeys.filter(k => allContent[k]?.category === category).map(key => (
+                  {category !== 'SUCCESS CRITERIA' && sortedContentKeys.filter(k => allContent[k]?.category === category && (!librarySearch || `${allContent[k].label} ${allContent[k].title} ${allContent[k].sourceKind || ''}`.toLowerCase().includes(librarySearch.toLowerCase()))).map(key => (
                     <div key={key} className="flex items-center gap-3 group py-1 hover:bg-slate-50/50 rounded transition-colors">
                       <input type="checkbox" checked={checkedItems.includes(key)} onChange={() => setCheckedItems(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key])} className="w-4 h-4 rounded text-[#2596be] border-slate-300 cursor-pointer" />
-                      <span className="text-xs font-medium text-slate-600 flex-1 truncate">{allContent[key]?.label}</span>
+                      <span className="text-xs font-medium text-slate-600 flex-1 min-w-0">
+                        <span className="block truncate">{allContent[key]?.label}</span>
+                        {allContent[key].origin === 'official' && <span className="block text-[9px] font-normal text-slate-400">Referência oficial · {allContent[key].sourceKind}</span>}
+                      </span>
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button 
                           type="button"

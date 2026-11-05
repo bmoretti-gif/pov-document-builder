@@ -1,6 +1,7 @@
 export type DocumentLanguage = 'en' | 'pt' | 'es';
 export const localeFor = (lang: DocumentLanguage) => ({en:'en-US',pt:'pt-BR',es:'es-ES'}[lang]);
 const labels: Record<string, [string, string]> = {
+  'CRIBL COLLECTOR CONFIGS':['CONFIGURA\u00c7\u00d5ES DE COLLECTORS CRIBL','CONFIGURACIONES DE COLLECTORS CRIBL'],
   'CUSTOMER':['CLIENTE','CLIENTE'],
   'PROOF OF VALUE ENGAGEMENT DOCUMENT':['DOCUMENTO DA PROVA DE VALOR','DOCUMENTO DE LA PRUEBA DE VALOR'],
   'POV Details':['Detalhes do POV','Detalles del POV'],

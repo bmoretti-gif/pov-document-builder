@@ -56,3 +56,6 @@ A seleção Português utiliza as traduções incorporadas de default-translatio
 
 ## Idiomas do documento
 O seletor utiliza EN, PT-BR e ES. PT-BR e ES incluem tradu??es autom?ticas dos 66 itens padr?o. Comandos, URLs e nomes de menus ficam preservados. Textos personalizados e altera??es nos originais precisam de tradu??o pr?pria. As tradu??es da sess?o t?m prioridade sobre a biblioteca incorporada.
+
+## Catalogo oficial de Sources e Collectors
+O menu sincroniza source-catalog.json gerado da pagina oficial https://docs.cribl.io/stream/sources.md. A consulta atual cobre 74 Sources e 10 Collectors. O GitHub Actions atualiza esse catalogo diariamente e em cada publicacao. Novas entradas chegam a bibliotecas existentes preservando edicoes e exclusoes. Itens oficiais sao checklists genericos com links e restricoes listadas pelo fabricante; nao substituem roteiros completos ou a validacao de portas no ambiente. Esses checklists incluem EN, PT-BR e ES. Use a busca da biblioteca para localizar integracoes. Collectors ficam em sua propria categoria.
