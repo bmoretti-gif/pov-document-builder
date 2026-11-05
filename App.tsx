@@ -97,6 +97,8 @@ const getTimestamp = () => {
 
 const App: React.FC = () => {
   const [allContent, setAllContent] = useState<Record<string, ContentItem>>({});
+  const allContentRef = useRef(allContent);
+  allContentRef.current = allContent;
   const [checkedItems, setCheckedItems] = useState<string[]>([]);
   const [povInfo, setPovInfo] = useState<POVInfo>({ ...EMPTY_POV_INFO });
   const [architectureImage, setArchitectureImage] = useState<string | null>(null);
@@ -206,7 +208,8 @@ const App: React.FC = () => {
         setCatalogTranslations(catalog.translations);
         const entries = Object.values(catalog.entries) as ContentItem[];
         setCatalogSummary(`${entries.filter(e => e.sourceKind !== 'collector').length} Sources / ${entries.filter(e => e.sourceKind === 'collector').length} Collectors · ${new Date(catalog.checkedAt).toLocaleDateString('pt-BR')}`);
-        setAllContent(previous => syncOfficialCatalog(localStorage, previous, catalog.entries));
+        const synchronized = syncOfficialCatalog(localStorage, allContentRef.current, catalog.entries);
+        setAllContent(synchronized);
       })
       .catch(() => { if(active) setCatalogSummary('Catálogo oficial indisponível; biblioteca local preservada.'); });
     return () => { active = false; };
