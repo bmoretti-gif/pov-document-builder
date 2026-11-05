@@ -1,0 +1,11 @@
+version: 1
+tests:
+  - id: pov-formatting-and-import-safety
+    command: node tests/formatter.test.mjs
+    expected_exit_code: 0
+  - id: pov-library-bootstrap
+    command: node tests/library.test.mjs
+    expected_exit_code: 0
+  - id: pov-languages-and-current-docs
+    command: node tests/languages-docs.test.mjs
+    expected_exit_code: 0

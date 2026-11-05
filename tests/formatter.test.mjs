@@ -1,0 +1,18 @@
+import { readFileSync } from 'node:fs';
+import vm from 'node:vm';
+import assert from 'node:assert/strict';
+import ts from 'typescript';
+const source = readFileSync(new URL('../services/formatter.ts', import.meta.url), 'utf8');
+const compiled = ts.transpileModule(source, {compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText;
+const context = vm.createContext({exports:{}});
+vm.runInContext(compiled,context);
+const format = context.exports.formatContent;
+assert.ok(format('***Title***').includes('<strong><em>Title</em></strong>'));
+assert.ok(format('- [ ] Task\n  - Step').includes('margin-left: 36pt'));
+assert.ok(format('TABLE:\nHeader,Value\nA,B').includes('<table'));
+assert.ok(format('```\n<tag>&value\n```').includes('&lt;tag&gt;&amp;value'));
+assert.ok(!format('<img src=x onerror=alert(1)>').includes('<img'));
+assert.ok(!format('TABLE:\nA,B\n<script>,x').includes('<script>'));
+assert.ok(!format('[click](javascript:alert(1))').includes('href='));
+assert.ok(format('[Docs](https://docs.cribl.io)').includes('rel="noopener noreferrer"'));
+console.log('PASS: formatting, nested bullets, tables, code and imported HTML/link safety.');
