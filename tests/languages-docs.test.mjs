@@ -26,3 +26,10 @@ try {
  assert.equal(calls,6,'each check must fetch fresh documentation');
 } finally {globalThis.fetch=originalFetch;}
 console.log('PASS: language selection, technical preservation, official URL validation, fresh documentation checks');
+
+let requestedLanguage;
+context.Translator={create:async options=>{requestedLanguage=options.targetLanguage;return {translate:async text=>'Traduzido: '+text,destroy(){}};}};
+const translator=await context.exports.createLocalTranslator('pt');
+assert.equal(requestedLanguage,'pt');
+assert.equal(await translator.translate('Selected content'),'Traduzido: Selected content');
+await context.exports.createLocalTranslator('es');assert.equal(requestedLanguage,'es');

@@ -12,3 +12,6 @@ tests:
   - id: pov-github-pages
     command: node tests/pages.test.mjs
     expected_exit_code: 0
+  - id: pov-compact-documentation-panel
+    command: node tests/documentation-panel.test.mjs
+    expected_exit_code: 0

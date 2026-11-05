@@ -1,3 +1,4 @@
+import DocumentationPanel from './components/DocumentationPanel';
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { 
   ContentItem, 
@@ -107,6 +108,7 @@ const App: React.FC = () => {
   const [languagePanel, setLanguagePanel] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
+  const [docsCheckedAt, setDocsCheckedAt] = useState('');
   const [docsReport, setDocsReport] = useState<{url:string;content:string;error?:string}[]>([]);
   const t = (text:string) => documentLanguage === 'en' ? text : documentTranslations[translationKey(text,documentLanguage)] ?? documentLabel(text,documentLanguage);
 
@@ -369,21 +371,22 @@ const App: React.FC = () => {
     ...sessionCriteria.flatMap(c => [c.criteria,c.details])
   ])).filter(text => text && documentLabel(text,documentLanguage) === text);
   const missingTranslations = documentLanguage === 'en' ? [] : translationTexts.filter(text => !documentTranslations[translationKey(text,documentLanguage)]);
-  const translateSelected = async () => {
+  const translateSelected = async (targetLanguage: DocumentLanguage = documentLanguage) => {
+    if (targetLanguage === 'en') return;
     setBusy(true); setNotice('Traduzindo conte?do selecionado?');
     let translator;
     try {
-      translator = await createLocalTranslator(documentLanguage);
-      for (const text of missingTranslations) {
+      translator = await createLocalTranslator(targetLanguage);
+      for (const text of translationTexts.filter(text => documentLabel(text,targetLanguage) === text && !documentTranslations[translationKey(text,targetLanguage)])) {
         const value = await translateMarkup(text, x => translator!.translate(x));
-        setDocumentTranslations(prev => ({...prev,[translationKey(text,documentLanguage)]:value}));
+        setDocumentTranslations(prev => ({...prev,[translationKey(text,targetLanguage)]:value}));
       }
       setNotice('Tradu??o conclu?da. Revise o documento antes de exportar.');
-    } catch(e) { setNotice(String(e)); setLanguagePanel(true); }
+    } catch(e) { setNotice('O conte?do ainda n?o foi traduzido: ' + String(e) + ' Voc? pode preencher as tradu??es abaixo.'); setLanguagePanel(true); }
     finally { translator?.destroy(); setBusy(false); }
   };
   const refreshDocs = async () => {
-    setNotice('Consultando documenta??o oficial atual?');
+    setNotice('Consultando documenta??o oficial?');
     try {
       const urls = Array.from(new Set(checkedItems.flatMap(k => allContent[k]?.content.match(/https:\/\/docs\.cribl\.io\/[^\s)]+/g) ?? [])));
       const staticSite = !import.meta.env.DEV;
@@ -396,9 +399,8 @@ const App: React.FC = () => {
         result = await response.json();
       }
       setDocsReport(result.pages);
-      const stale = Date.now() - Date.parse(result.checkedAt) > 48 * 60 * 60 * 1000;
-      const failures = result.pages.filter((p:{error?:string}) => p.error).length;
-      setNotice(`Documentacao consultada em ${new Date(result.checkedAt).toLocaleString()}. ${staticSite ? 'Atualizada pelo GitHub Actions a cada publicacao e diariamente.' : 'Consulta ao vivo.'} ${stale ? 'Atencao: consulta com mais de 48 horas.' : ''} ${failures ? `${failures} referencias indisponiveis; abra os links oficiais para revisar.` : ''} Revise os snippets e portas antes de exportar.`);
+      setDocsCheckedAt(result.checkedAt);
+      setNotice('');
       return true;
     } catch(e) { setNotice(String(e)); return false; }
   };
@@ -629,7 +631,7 @@ const App: React.FC = () => {
             {saveIndicator && <div className="px-2 py-0.5 bg-teal-50 text-[#2596be] text-[9px] font-black rounded uppercase">{saveIndicator}</div>}
           </div>
           <div className="flex gap-2 flex-wrap">
-            <select aria-label="Idioma do documento" value={documentLanguage} onChange={e => setDocumentLanguage(e.target.value as DocumentLanguage)} className="border rounded-lg px-2"><option value="en">English</option><option value="pt">Portugu?s</option><option value="es">Espa?ol</option></select>
+            <select aria-label="Idioma do documento" value={documentLanguage} onChange={e => { const lang = e.target.value as DocumentLanguage; setDocumentLanguage(lang); if(lang !== 'en') void translateSelected(lang); else { setLanguagePanel(false); setNotice(''); } }} className="border rounded-lg px-2"><option value="en">English</option><option value="pt">Portugu?s</option><option value="es">Espa?ol</option></select>
             {documentLanguage !== 'en' && <button onClick={() => setLanguagePanel(!languagePanel)} className="border rounded-lg px-2">Tradu??es ({missingTranslations.length})</button>}
             <button onClick={refreshDocs} className="border rounded-lg px-2">Consultar Cribl Docs</button>
             <button onClick={() => configInputRef.current?.click()} className="p-2 border rounded-lg hover:bg-slate-50" title="Load Session"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
@@ -638,14 +640,15 @@ const App: React.FC = () => {
           </div>
         </header>
 
-        <div className="overflow-y-auto max-h-80 bg-white px-8 text-sm">
+        <DocumentationPanel checkedAt={docsCheckedAt} pages={docsReport} />
+        <div className="overflow-y-auto max-h-80 bg-white px-8 text-sm shrink-0">
           {notice && <p role="status" className="py-3">{notice}</p>}
           {languagePanel && documentLanguage !== 'en' && <div className="space-y-3 py-4">
             <p>Traduza ou revise o conte?do abaixo para o idioma selecionado. Comandos, URLs e portas devem ser preservados.</p>
-            <button disabled={busy} onClick={translateSelected} className="border rounded p-2">{busy ? 'Traduzindo?' : 'Traduzir no Chrome (quando dispon?vel)'}</button>
+            <button disabled={busy} onClick={() => void translateSelected()} className="border rounded p-2">{busy ? 'Traduzindo?' : 'Traduzir no Chrome (quando dispon?vel)'}</button>
             {translationTexts.map(text => <label key={text} className="block"><pre className="whitespace-pre-wrap text-xs">{text}</pre><textarea aria-label="Tradu??o" className="border w-full p-2" rows={3} value={documentTranslations[translationKey(text,documentLanguage)] ?? ''} onChange={e => setDocumentTranslations(prev => ({...prev,[translationKey(text,documentLanguage)]:e.target.value}))}/></label>)}
           </div>}
-          {docsReport.map(page => <details key={page.url} className="py-2"><summary><a href={page.url} target="_blank" rel="noopener noreferrer">{page.url}</a>{page.error && ` ? ${page.error}`}</summary><pre className="whitespace-pre-wrap text-xs">{page.content}</pre></details>)}
+
         </div>
         <div className="flex-1 overflow-y-auto p-12 custom-scrollbar flex flex-col items-center">
           <div id="preview-content" className="word-page bg-white w-full max-w-[850px] min-h-[1056px] p-20 border border-slate-200 relative mb-12 shadow-2xl">

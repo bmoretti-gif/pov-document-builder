@@ -1,0 +1,12 @@
+﻿import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {createRequire} from 'node:module';
+import vm from 'node:vm';
+import ts from 'typescript';
+import React from 'react';
+import {renderToStaticMarkup} from 'react-dom/server';
+const compiled=ts.transpileModule(readFileSync(new URL('../components/DocumentationPanel.tsx',import.meta.url),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.React,esModuleInterop:true}}).outputText;
+const ctx=vm.createContext({exports:{},require:createRequire(import.meta.url),Date});vm.runInContext(compiled,ctx);
+const html=renderToStaticMarkup(React.createElement(ctx.exports.default,{checkedAt:new Date().toISOString(),pages:[{url:'https://docs.cribl.io/stream/',content:'Long reference body',error:'HTTP 404'}]}));
+assert.ok(html.includes('aria-expanded="false"'));assert.ok(html.includes('1 referências para revisar'));assert.ok(!html.includes('Long reference body'));assert.ok(!html.includes('https://docs.cribl.io/stream/'));
+console.log('PASS: references collapsed initially, warning visible, document preview space preserved');
