@@ -18,3 +18,6 @@ tests:
   - id: pov-portuguese-library
     command: node tests/portuguese-library.test.mjs
     expected_exit_code: 0
+  - id: pov-spanish-library
+    command: node tests/spanish-library.test.mjs
+    expected_exit_code: 0

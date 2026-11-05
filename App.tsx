@@ -17,6 +17,7 @@ import {
 import { formatContent } from './services/formatter';
 import defaultLibrary from './default-library.json';
 import portugueseLibrary from './default-translations-pt.json';
+import spanishLibrary from './default-translations-es.json';
 import { loadDocsSnapshot } from './services/docs-client.mjs';
 import { loadLibrary } from './services/library';
 import { documentLabel, translationKey, localeFor, createLocalTranslator, translateMarkup, type DocumentLanguage } from './services/languages';
@@ -111,7 +112,7 @@ const App: React.FC = () => {
   const [notice, setNotice] = useState('');
   const [docsCheckedAt, setDocsCheckedAt] = useState('');
   const [docsReport, setDocsReport] = useState<{url:string;content:string;error?:string}[]>([]);
-  const effectiveTranslations: Record<string,string> = useMemo(() => ({...portugueseLibrary, ...documentTranslations}), [documentTranslations]);
+  const effectiveTranslations: Record<string,string> = useMemo(() => ({...portugueseLibrary, ...spanishLibrary, ...documentTranslations}), [documentTranslations]);
   const t = (text:string) => documentLanguage === 'en' ? text : effectiveTranslations[translationKey(text,documentLanguage)] ?? documentLabel(text,documentLanguage);
 
   
@@ -635,7 +636,7 @@ const App: React.FC = () => {
             {saveIndicator && <div className="px-2 py-0.5 bg-teal-50 text-[#2596be] text-[9px] font-black rounded uppercase">{saveIndicator}</div>}
           </div>
           <div className="flex gap-2 flex-wrap">
-            <select aria-label="Idioma do documento" value={documentLanguage} onChange={e => { const lang = e.target.value as DocumentLanguage; setDocumentLanguage(lang); if(lang !== 'en') void translateSelected(lang); else { setLanguagePanel(false); setNotice(''); } }} className="border rounded-lg px-2"><option value="en">English</option><option value="pt">Portugu?s</option><option value="es">Espa?ol</option></select>
+            <select aria-label="Idioma do documento" value={documentLanguage} onChange={e => { const lang = e.target.value as DocumentLanguage; setDocumentLanguage(lang); if(lang !== 'en') void translateSelected(lang); else { setLanguagePanel(false); setNotice(''); } }} className="border rounded-lg px-2"><option value="en">EN</option><option value="pt">PT-BR</option><option value="es">ES</option></select>
             {documentLanguage !== 'en' && <button onClick={() => setLanguagePanel(!languagePanel)} className="border rounded-lg px-2">Tradu??es ({missingTranslations.length})</button>}
             <button onClick={refreshDocs} className="border rounded-lg px-2">Consultar Cribl Docs</button>
             <button onClick={() => configInputRef.current?.click()} className="p-2 border rounded-lg hover:bg-slate-50" title="Load Session"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
