@@ -16,6 +16,7 @@ import {
 } from './constants';
 import { formatContent } from './services/formatter';
 import defaultLibrary from './default-library.json';
+import defaultLibraryBaseline from './default-library-baseline.json';
 import portugueseLibrary from './default-translations-pt.json';
 import spanishLibrary from './default-translations-es.json';
 import { loadDocsSnapshot } from './services/docs-client.mjs';
@@ -199,7 +200,7 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    setAllContent(loadLibrary(localStorage, defaultLibrary as Record<string, ContentItem>));
+    setAllContent(loadLibrary(localStorage, defaultLibrary as Record<string, ContentItem>, defaultLibraryBaseline));
     const savedSession = localStorage.getItem(STORAGE_KEY_SESSION);
     if (savedSession) {
       try {

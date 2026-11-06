@@ -21,7 +21,13 @@ export function syncOfficialCatalog(storage: Pick<Storage, 'getItem' | 'setItem'
   return merged;
 }
 
-export function loadLibrary(storage: Pick<Storage, 'getItem' | 'setItem'>, defaults: Record<string, ContentItem>): Record<string, ContentItem> {
+export function libraryFingerprint(item: ContentItem): string {
+  let hash = 2166136261;
+  for (const c of JSON.stringify([item.category, item.label, item.title, item.content])) hash = Math.imul(hash ^ c.charCodeAt(0), 16777619);
+  return (hash >>> 0).toString(16);
+}
+
+export function loadLibrary(storage: Pick<Storage, 'getItem' | 'setItem'>, defaults: Record<string, ContentItem>, legacyBaseline: Record<string, string> = {}): Record<string, ContentItem> {
   let saved: Record<string, ContentItem> = {};
   try {
     const raw = storage.getItem(KEY);
@@ -30,11 +36,22 @@ export function loadLibrary(storage: Pick<Storage, 'getItem' | 'setItem'>, defau
       if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('Invalid library');
       saved = parsed;
     }
-    if (storage.getItem(SEED_KEY)) return saved;
+    if (storage.getItem(SEED_KEY)) {
+      let previous = legacyBaseline;
+      try { previous = JSON.parse(storage.getItem('cribl_default_library_seen') || 'null') || legacyBaseline; } catch { /* Use the original fingerprints. */ }
+      for (const [key, item] of Object.entries(defaults)) {
+        // Upgrade untouched defaults only. Missing items and customer edits stay intact.
+        if (saved[key] && !saved[key].origin && libraryFingerprint(saved[key]) === previous[key]) saved[key] = item;
+      }
+      storage.setItem(KEY, JSON.stringify(saved));
+      storage.setItem('cribl_default_library_seen', JSON.stringify(Object.fromEntries(Object.entries(defaults).map(([key,item]) => [key,libraryFingerprint(item)]))));
+      return saved;
+    }
     // Existing edits win. Seed only once so deleted default items stay deleted.
     const merged = { ...defaults, ...saved };
     storage.setItem(KEY, JSON.stringify(merged));
     storage.setItem(SEED_KEY, '1');
+    storage.setItem('cribl_default_library_seen', JSON.stringify(Object.fromEntries(Object.entries(defaults).map(([key,item]) => [key,libraryFingerprint(item)]))));
     return merged;
   } catch (error) {
     console.error('Library initialization failed', error);

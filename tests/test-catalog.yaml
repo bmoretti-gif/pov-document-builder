@@ -1,5 +1,8 @@
 version: 1
 tests:
+  - id: pov-reviewed-sections-and-migration
+    command: node tests/reviewed-library.test.mjs
+    expected_exit_code: 0
   - id: pov-formatting-and-import-safety
     command: node tests/formatter.test.mjs
     expected_exit_code: 0
