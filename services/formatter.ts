@@ -2,7 +2,8 @@ export const escapeHtml = (text: string): string => text.replace(/&/g, '&amp;').
 
 export function replaceCustomerPlaceholder(text: string, customerName: string): string {
   const customer = customerName.trim();
-  return customer ? text.replace(/\[CUSTOMER\]/g, () => customer) : text;
+  // The ampersand is encoded when substituting in already-formatted HTML.
+  return customer ? text.replace(/\[CUSTOMER(\s*(?:\+|&(?:amp;)?)\s*CRIBL)?\]/g, (_match, jointOwner: string | undefined) => customer + (jointOwner || '')) : text;
 }
 
 export function formatCustomerContent(text: string, customerName: string): string {
