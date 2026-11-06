@@ -14,7 +14,7 @@ import {
   SUCCESS_CRITERIA_OPTIONS,
   BRAND_LOGO_URL
 } from './constants';
-import { formatContent } from './services/formatter';
+import { formatCustomerContent, replaceCustomerPlaceholder } from './services/formatter';
 import defaultLibrary from './default-library.json';
 import defaultLibraryBaseline from './default-library-baseline.json';
 import portugueseLibrary from './default-translations-pt.json';
@@ -129,6 +129,7 @@ const App: React.FC = () => {
   }, [officialDocuments]);
   const effectiveTranslations: Record<string,string> = useMemo(() => ({...portugueseLibrary, ...spanishLibrary, ...catalogTranslations, ...officialContentTranslations, ...documentTranslations}), [documentTranslations, catalogTranslations, officialContentTranslations]);
   const t = (text:string) => documentLanguage === 'en' ? text : effectiveTranslations[translationKey(text,documentLanguage)] ?? documentLabel(text,documentLanguage);
+  const customerText = (text:string) => replaceCustomerPlaceholder(t(text), povInfo.customerName);
   const contentFor = (key:string) => allContent[key]?.origin === 'official' ? officialDocuments[key]?.contents?.en || allContent[key].content : allContent[key]?.content || '';
 
   useEffect(() => {
@@ -831,10 +832,10 @@ const App: React.FC = () => {
                           <tbody>
                             {mergedPorts.map((p, i) => (
                               <tr key={i}>
-                                <td style={{ border: '1pt solid #cbd5e1', padding: '8pt', fontSize: '9pt' }}>{t(p.source)}</td>
-                                <td style={{ border: '1pt solid #cbd5e1', padding: '8pt', fontSize: '9pt' }}>{t(p.destination)}</td>
+                                <td style={{ border: '1pt solid #cbd5e1', padding: '8pt', fontSize: '9pt' }}>{customerText(p.source)}</td>
+                                <td style={{ border: '1pt solid #cbd5e1', padding: '8pt', fontSize: '9pt' }}>{customerText(p.destination)}</td>
                                 <td style={{ border: '1pt solid #cbd5e1', padding: '8pt', fontSize: '9pt' }}>{p.protocol ? `${p.protocol} ` : ''}{p.port}</td>
-                                <td style={{ border: '1pt solid #cbd5e1', padding: '8pt', fontSize: '9pt' }}>{t(p.purpose)}</td>
+                                <td style={{ border: '1pt solid #cbd5e1', padding: '8pt', fontSize: '9pt' }}>{customerText(p.purpose)}</td>
                               </tr>
                             ))}
                           </tbody>
@@ -844,12 +845,12 @@ const App: React.FC = () => {
 
                     {items.map(k => (
                       <div key={k} className="space-y-4">
-                        <h3 style={subHeaderStyle}>{t(allContent[k].title)}</h3>
+                        <h3 style={subHeaderStyle}>{customerText(allContent[k].title)}</h3>
                         {allContent[k].origin === 'official' && documentLanguage !== 'en' && officialDocuments[k]?.contents?.en && !effectiveTranslations[translationKey(officialDocuments[k].contents!.en!,documentLanguage)] && <p className="text-xs text-amber-700">Tradução ainda indisponível para esta página. As instruções originais em inglês estão abaixo.</p>}
                         {allContent[k].origin === 'official' && officialDocuments[k]?.translationScope?.[documentLanguage] === 'configuration' && <p className="text-xs text-slate-500">Tradução das seções de configuração. Consulte o link oficial para a página completa.</p>}
                         {allContent[k].origin === 'official' && !officialDocuments[k]?.contents?.en
                           ? <p className="text-sm text-slate-500" role="status">{officialDocuments[k]?.error || 'Carregando instruções da documentação oficial…'} {officialDocuments[k]?.error && <a href={allContent[k].documentationUrl} target="_blank" rel="noopener noreferrer" className="text-[#2596be]">Abrir página oficial ↗</a>}</p>
-                          : <div dangerouslySetInnerHTML={{ __html: formatContent(t(contentFor(k))) }} />}
+                          : <div dangerouslySetInnerHTML={{ __html: formatCustomerContent(t(contentFor(k)), povInfo.customerName) }} />}
                       </div>
                     ))}
                   </div>
@@ -870,8 +871,8 @@ const App: React.FC = () => {
                     <tbody>
                       {sessionCriteria.map((c, i) => (
                         <tr key={i}>
-                          <td style={{ border: '1pt solid #cbd5e1', padding: '10pt', fontSize: '9pt', fontWeight: 'bold' }}>{t(c.criteria)}</td>
-                          <td style={{ border: '1pt solid #cbd5e1', padding: '10pt', fontSize: '9pt' }}>{t(c.details)}</td>
+                          <td style={{ border: '1pt solid #cbd5e1', padding: '10pt', fontSize: '9pt', fontWeight: 'bold' }}>{customerText(c.criteria)}</td>
+                          <td style={{ border: '1pt solid #cbd5e1', padding: '10pt', fontSize: '9pt' }}>{customerText(c.details)}</td>
                           <td style={{ border: '1pt solid #cbd5e1', padding: '10pt', textAlign: 'center', fontSize: '12pt' }}>{c.completed ? '☑' : '☐'}</td>
                         </tr>
                       ))}

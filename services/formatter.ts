@@ -1,5 +1,16 @@
 export const escapeHtml = (text: string): string => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
+export function replaceCustomerPlaceholder(text: string, customerName: string): string {
+  const customer = customerName.trim();
+  return customer ? text.replace(/\[CUSTOMER\]/g, () => customer) : text;
+}
+
+export function formatCustomerContent(text: string, customerName: string): string {
+  // Substitute after formatting so the customer name stays literal text, even
+  // when it contains Markdown punctuation or HTML characters.
+  return replaceCustomerPlaceholder(formatContent(text), escapeHtml(customerName));
+}
+
 export function formatContent(text: string): string {
   if (!text) return '';
   

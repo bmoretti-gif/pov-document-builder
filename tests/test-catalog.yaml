@@ -1,5 +1,8 @@
 version: 1
 tests:
+  - id: pov-customer-placeholder
+    command: node tests/customer-placeholder.test.mjs
+    expected_exit_code: 0
   - id: pov-reviewed-sections-and-migration
     command: node tests/reviewed-library.test.mjs
     expected_exit_code: 0
