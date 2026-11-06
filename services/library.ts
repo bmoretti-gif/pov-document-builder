@@ -11,7 +11,7 @@ export function syncOfficialCatalog(storage: Pick<Storage, 'getItem' | 'setItem'
     if (merged[key]) {
       if (previous[key] && JSON.stringify(merged[key]) === JSON.stringify(previous[key])) merged[key] = entry;
     } else if (!previous[key]) {
-      const slug = entry.documentationUrl?.match(/\/(sources-[\w-]+|collectors-[\w-]+)\/?$/)?.[1];
+      const slug = entry.documentationUrl?.match(/\/(sources-[\w-]+|collectors-[\w-]+|destinations-[\w-]+)\/?$/)?.[1];
       const alreadyCovered = slug && Object.values(merged).some(item => item.category === entry.category && new RegExp('/' + slug + '(?:/|\\.md|[)#\\s]|$)').test(item.content));
       if (!alreadyCovered) merged[key] = entry;
     }

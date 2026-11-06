@@ -8,7 +8,7 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "test": "node --test tests/*.test.mjs",
-    "docs:update": "node scripts/update-sources.mjs && node scripts/update-docs.mjs"
+    "docs:update": "node scripts/update-sources.mjs && node scripts/update-official-documents.mjs && node scripts/update-docs.mjs"
   },
   "dependencies": {
     "react": "^19.2.3",

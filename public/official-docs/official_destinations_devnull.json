@@ -1,0 +1,9 @@
+{
+  "url": "https://docs.cribl.io/stream/destinations-devnull/",
+  "checkedAt": "2026-11-06T14:26:46.528Z",
+  "hash": "97374cdb1e20f930bbed4b935d4431ad854036414e7ed9635360d38fb9f3ebf5",
+  "contents": {
+    "en": "# DevNull Destination\n\n\n\n\nThe DevNull Destination simply drops events. Cribl provides this as a basic output to test Pipelines and Routes.\n\n> Type: Internal | TLS Support: N/A | PQ Support: N/A \n>\n\n\n## Configure Cribl Stream to Forward to DevNull\n\nDevNull requires no configuration: A DevNull Destination is preconfigured and active as soon as you install Cribl Stream. To verify this, follow the direction below.\n\nOn the top bar, select **Products**, and then select **Cribl Stream**. Under **Worker Groups**, select a Worker Group. Next, you have two options:\n\n   - To configure via [QuickConnect](https://docs.cribl.io/stream/quickconnect), navigate to **Routing** > **QuickConnect** (Stream) or **Collect** (Edge). A **DevNull** Destination is preconfigured and ready to use in the right **Destinations** column. \n   - To configure via the [Routes](https://docs.cribl.io/stream/routes), select **Data** > **Destinations** or **More** > **Destinations** (Edge). Select the Destination you want. From the resulting **Destinations** page, click anywhere on the `devnull` row to proceed.\n\n"
+  },
+  "translationScope": {}
+}

@@ -14,11 +14,12 @@ export function formatContent(text: string): string {
   const paraStyle = 'margin: 0; padding: 0; mso-margin-top-alt: 0pt; mso-margin-bottom-alt: 3pt; mso-para-margin: 0; line-height: 12pt; mso-line-height-rule: exactly; color: #1e293b; font-size: 10pt;';
   const bulletStyle = 'margin: 0; padding: 0; mso-margin-top-alt: 0pt; mso-margin-bottom-alt: 0pt; mso-para-margin: 0; line-height: 12pt; mso-line-height-rule: exactly; color: #1e293b; font-size: 10pt;';
 
-  for (let line of lines) {
+  for (let index = 0; index < lines.length; index++) {
+    const line = lines[index];
     const originalLine = line;
     const trimmedLine = line.trim();
     
-    if (trimmedLine === 'CODE:' || trimmedLine === '```') {
+    if (trimmedLine === 'CODE:' || /^```/.test(trimmedLine)) {
       if (inCodeBlock) {
         html += `<pre style="background-color: #0f172a; color: #f8fafc; padding: 9pt; border-radius: 4pt; margin: 12pt 0; font-family: 'Courier New', Courier, monospace; font-size: 9pt; white-space: pre-wrap; word-break: break-all; border: 1pt solid #1e293b; line-height: 11pt; mso-line-height-rule: exactly;"><code>${escapeHtml(codeLines.join('\n'))}</code></pre>`;
         inCodeBlock = false;
@@ -32,6 +33,15 @@ export function formatContent(text: string): string {
     
     if (inCodeBlock) {
       codeLines.push(originalLine);
+      continue;
+    }
+
+    if (trimmedLine.startsWith('|') && /^\s*\|?\s*:?-{3,}/.test(lines[index + 1] || '')) {
+      const rows = [trimmedLine];
+      index += 2;
+      while (index < lines.length && lines[index].trim().startsWith('|')) rows.push(lines[index++].trim());
+      index--;
+      html += renderTable(rows, '|');
       continue;
     }
     
@@ -65,7 +75,13 @@ export function formatContent(text: string): string {
       
       const leadingSpaces = originalLine.search(/\S/);
       
-      if (trimmedLine.startsWith('- [ ]')) {
+      const heading = trimmedLine.match(/^(#{1,6})\s+/);
+      if (heading) {
+        const level = Math.min(heading[1].length + 1, 6);
+        html += `<h${level} style="font-size: ${level <= 3 ? '13pt' : '11pt'}; color: #1e293b; margin: 12pt 0 6pt; font-weight: bold;">${processedLine.slice(heading[0].length)}</h${level}>`;
+      } else if (trimmedLine.startsWith('>')) {
+        html += `<p style="${paraStyle} border-left: 2pt solid #cbd5e1; padding-left: 8pt;">${processedLine.replace(/^&gt;\s?/, '')}</p>`;
+      } else if (trimmedLine.startsWith('- [ ]')) {
         const ml = leadingSpaces >= 2 ? '36pt' : '18pt';
         html += `<p class="MsoNormal" style="${bulletStyle} margin-left: ${ml}; mso-para-margin-left: ${ml};"><span style="font-family: Arial, sans-serif;">☐</span>&nbsp;${processedLine.slice(5).trim()}</p>`;
       } else if (trimmedLine.startsWith('- [x]') || trimmedLine.startsWith('- [X]')) {
@@ -85,15 +101,16 @@ export function formatContent(text: string): string {
   if (inTable && tableRows.length > 0) {
     html += renderTable(tableRows);
   }
+  if (inCodeBlock) html += `<pre style="white-space: pre-wrap; word-break: break-all; font-size: 9pt;"><code>${escapeHtml(codeLines.join('\n'))}</code></pre>`;
   
   return html;
 }
 
-function renderTable(rows: string[]): string {
+function renderTable(rows: string[], delimiter = ','): string {
   if (rows.length === 0) return '';
   let html = '<div style="margin: 12pt 0; width: 100%;"><table cellPadding="0" cellSpacing="0" border="0" style="width: 100%; border-collapse: collapse; border: 1pt solid #cbd5e1; font-size: 9pt; mso-table-lspace: 0pt; mso-table-rspace: 0pt;">';
   rows.forEach((row, index) => {
-    const cells = row.split(',').map(cell => cell.trim());
+    const cells = delimiter === '|' ? row.replace(/^\||\|$/g, '').split(/(?<!\\)\|/).map(cell => cell.trim().replace(/\\\|/g, '|')) : row.split(',').map(cell => cell.trim());
     const isHeader = index === 0;
     html += `<tr style="${isHeader ? 'background-color: #0f172a; color: #ffffff;' : 'background-color: #ffffff;'}">`;
     cells.forEach(cell => {

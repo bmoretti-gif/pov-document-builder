@@ -115,10 +115,38 @@ const App: React.FC = () => {
   const [docsCheckedAt, setDocsCheckedAt] = useState('');
   const [docsReport, setDocsReport] = useState<{url:string;content:string;error?:string}[]>([]);
   const [catalogTranslations, setCatalogTranslations] = useState<Record<string,string>>({});
+  const [officialDocuments, setOfficialDocuments] = useState<Record<string, {url:string; checkedAt?:string; contents?:Partial<Record<DocumentLanguage,string>>; translationScope?:Partial<Record<DocumentLanguage,string>>; error?:string}>>({});
   const [catalogSummary, setCatalogSummary] = useState('');
   const [librarySearch, setLibrarySearch] = useState('');
-  const effectiveTranslations: Record<string,string> = useMemo(() => ({...portugueseLibrary, ...spanishLibrary, ...catalogTranslations, ...documentTranslations}), [documentTranslations, catalogTranslations]);
+  const officialContentTranslations = useMemo(() => {
+    const translations: Record<string,string> = {};
+    for (const document of Object.values(officialDocuments)) {
+      if(!document.contents?.en) continue;
+      for(const lang of ['pt','es'] as const) if(document.contents[lang]) translations[translationKey(document.contents.en,lang)] = document.contents[lang]!;
+    }
+    return translations;
+  }, [officialDocuments]);
+  const effectiveTranslations: Record<string,string> = useMemo(() => ({...portugueseLibrary, ...spanishLibrary, ...catalogTranslations, ...officialContentTranslations, ...documentTranslations}), [documentTranslations, catalogTranslations, officialContentTranslations]);
   const t = (text:string) => documentLanguage === 'en' ? text : effectiveTranslations[translationKey(text,documentLanguage)] ?? documentLabel(text,documentLanguage);
+  const contentFor = (key:string) => allContent[key]?.origin === 'official' ? officialDocuments[key]?.contents?.en || allContent[key].content : allContent[key]?.content || '';
+
+  useEffect(() => {
+    const keys=checkedItems.filter(key => allContent[key]?.origin === 'official' && !officialDocuments[key]);
+    if(!keys.length) return;
+    let active=true;
+    void Promise.all(keys.map(async key => {
+      let document;
+      try {
+        if(!/^official_(sources|collectors|destinations)_[a-z0-9_]+$/.test(key)) throw new Error('Invalid official document identifier');
+        const response=await fetch(`${import.meta.env.BASE_URL}official-docs/${key}.json`, {cache:'no-store'});
+        if(!response.ok) throw new Error('Página oficial indisponível nesta publicação');
+        document=await response.json();
+        if(!document.contents?.en && !document.error) throw new Error('Documento oficial inválido');
+      } catch(error) { document={url:allContent[key].documentationUrl || '',error:String(error)}; }
+      return [key,document] as const;
+    })).then(documents=>{if(active)setOfficialDocuments(previous=>({...previous,...Object.fromEntries(documents)}));});
+    return () => {active=false;};
+  }, [checkedItems, allContent, officialDocuments]);
 
   
   const [activeModal, setActiveModal] = useState<'content' | 'pov-info' | 'custom-port' | 'criteria' | 'delete-snippet' | null>(null);
@@ -207,7 +235,7 @@ const App: React.FC = () => {
         if(!active) return;
         setCatalogTranslations(catalog.translations);
         const entries = Object.values(catalog.entries) as ContentItem[];
-        setCatalogSummary(`${entries.filter(e => e.sourceKind !== 'collector').length} Sources / ${entries.filter(e => e.sourceKind === 'collector').length} Collectors · ${new Date(catalog.checkedAt).toLocaleDateString('pt-BR')}`);
+        setCatalogSummary(`${entries.filter(e => e.category === 'CRIBL SOURCE CONFIGS').length} Sources / ${entries.filter(e => e.sourceKind === 'collector').length} Collectors / ${entries.filter(e => e.category === 'CRIBL DESTINATION CONFIGS').length} Destinations · ${new Date(catalog.checkedAt).toLocaleDateString('pt-BR')}`);
         const synchronized = syncOfficialCatalog(localStorage, allContentRef.current, catalog.entries);
         setAllContent(synchronized);
       })
@@ -232,6 +260,7 @@ const App: React.FC = () => {
     if (!tempContent.label || !tempContent.title) return;
     const key = editingKey || `item_${Date.now()}`;
     const normalized = { ...tempContent, category: tempContent.category || 'ENVIRONMENT' } as ContentItem;
+    if(editingKey && allContent[editingKey]?.origin === 'official' && normalized.content !== allContent[editingKey].content) delete normalized.origin;
     setAllContent(prev => ({ ...prev, [key]: normalized }));
     setEditingKey(null);
     setActiveModal(null);
@@ -280,6 +309,14 @@ const App: React.FC = () => {
   };
 
   const handleExportWord = async () => {
+    if(checkedItems.some(key => {
+      if(allContent[key]?.origin !== 'official') return false;
+      const original=officialDocuments[key]?.contents?.en;
+      return !original || (documentLanguage !== 'en' && !effectiveTranslations[translationKey(original,documentLanguage)]);
+    })) {
+      setNotice('Conteúdo oficial ou tradução indisponível. Revise o aviso na prévia; para páginas ainda não traduzidas, selecione EN ou complete as traduções antes de exportar.');
+      return;
+    }
     if (missingTranslations.length) { setLanguagePanel(true); setNotice('Complete as tradu??es antes de exportar.'); return; }
     if (!(await refreshDocs())) return;
     const contentElement = document.getElementById('preview-content');
@@ -391,7 +428,7 @@ const App: React.FC = () => {
   }, [checkedItems, allContent, customPorts]);
 
   const translationTexts = Array.from(new Set([
-    ...checkedItems.flatMap(k => allContent[k] ? [allContent[k].title, allContent[k].content] : []),
+    ...checkedItems.flatMap(k => allContent[k] ? [allContent[k].title, contentFor(k)] : []),
     ...mergedPorts.flatMap(p => [p.source,p.destination,p.purpose]),
     ...sessionCriteria.flatMap(c => [c.criteria,c.details])
   ])).filter(text => text && documentLabel(text,documentLanguage) === text);
@@ -511,8 +548,8 @@ const App: React.FC = () => {
         </div>
 
         <div className="px-6 pb-3 space-y-2">
-          <input aria-label="Buscar na biblioteca" placeholder="Buscar Source, Collector ou roteiro…" value={librarySearch} onChange={e => setLibrarySearch(e.target.value)} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs" />
-          {catalogSummary && <p className="text-[10px] text-slate-500">{catalogSummary} · <a href="https://docs.cribl.io/stream/sources/" target="_blank" rel="noopener noreferrer" className="text-[#2596be]">Catálogo oficial ↗</a></p>}
+          <input aria-label="Buscar na biblioteca" placeholder="Buscar Source, Destination, Collector ou roteiro…" value={librarySearch} onChange={e => setLibrarySearch(e.target.value)} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-xs" />
+          {catalogSummary && <div className="text-[10px] text-slate-500"><p>{catalogSummary}</p><a href="https://docs.cribl.io/stream/sources/" target="_blank" rel="noopener noreferrer" className="text-[#2596be]">Sources ↗</a><span className="mx-2">·</span><a href="https://docs.cribl.io/stream/destinations/" target="_blank" rel="noopener noreferrer" className="text-[#2596be]">Destinations ↗</a></div>}
         </div>
         <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-4">
           {CATEGORIES.map(category => (
@@ -600,12 +637,12 @@ const App: React.FC = () => {
                       <input type="checkbox" checked={checkedItems.includes(key)} onChange={() => setCheckedItems(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key])} className="w-4 h-4 rounded text-[#2596be] border-slate-300 cursor-pointer" />
                       <span className="text-xs font-medium text-slate-600 flex-1 min-w-0">
                         <span className="block truncate">{allContent[key]?.label}</span>
-                        {allContent[key].origin === 'official' && <span className="block text-[9px] font-normal text-slate-400">Referência oficial · {allContent[key].sourceKind}</span>}
+                        {allContent[key].origin === 'official' && <span className="block text-[9px] font-normal text-slate-400">Conteúdo oficial · {allContent[key].sourceKind}</span>}
                       </span>
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button 
                           type="button"
-                          onClick={(e) => { e.stopPropagation(); setEditingKey(key); setTempContent({ ...allContent[key] }); setActiveModal('content'); }} 
+                          onClick={(e) => { e.stopPropagation(); setEditingKey(key); setTempContent({ ...allContent[key], content:contentFor(key) }); setActiveModal('content'); }} 
                           className="p-1 hover:text-[#2596be] text-slate-400 cursor-pointer transition-colors"
                           title="Edit Content"
                         >
@@ -807,7 +844,11 @@ const App: React.FC = () => {
                     {items.map(k => (
                       <div key={k} className="space-y-4">
                         <h3 style={subHeaderStyle}>{t(allContent[k].title)}</h3>
-                        <div dangerouslySetInnerHTML={{ __html: formatContent(t(allContent[k].content)) }} />
+                        {allContent[k].origin === 'official' && documentLanguage !== 'en' && officialDocuments[k]?.contents?.en && !effectiveTranslations[translationKey(officialDocuments[k].contents!.en!,documentLanguage)] && <p className="text-xs text-amber-700">Tradução ainda indisponível para esta página. As instruções originais em inglês estão abaixo.</p>}
+                        {allContent[k].origin === 'official' && officialDocuments[k]?.translationScope?.[documentLanguage] === 'configuration' && <p className="text-xs text-slate-500">Tradução das seções de configuração. Consulte o link oficial para a página completa.</p>}
+                        {allContent[k].origin === 'official' && !officialDocuments[k]?.contents?.en
+                          ? <p className="text-sm text-slate-500" role="status">{officialDocuments[k]?.error || 'Carregando instruções da documentação oficial…'} {officialDocuments[k]?.error && <a href={allContent[k].documentationUrl} target="_blank" rel="noopener noreferrer" className="text-[#2596be]">Abrir página oficial ↗</a>}</p>
+                          : <div dangerouslySetInnerHTML={{ __html: formatContent(t(contentFor(k))) }} />}
                       </div>
                     ))}
                   </div>

@@ -30,7 +30,7 @@ assert.equal(built.entries.official_collectors_database.category,'CRIBL COLLECTO
 const openai=built.entries.official_sources_openai;
 for(const lang of ['pt','es']) assert.ok(built.translations[JSON.stringify([lang,openai.content])].includes('Leader'));
 const live=JSON.parse(readFileSync(new URL('../public/source-catalog.json',import.meta.url),'utf8'));
-assert.ok(Object.values(live.entries).filter(e=>e.sourceKind!=='collector').length>=74);
+assert.ok(Object.values(live.entries).filter(e=>e.category==='CRIBL SOURCE CONFIGS').length>=74);
 assert.ok(Object.values(live.entries).filter(e=>e.sourceKind==='collector').length>=10);
 for(const item of Object.values(live.entries)) {
   assert.ok(item.documentationUrl.startsWith('https://docs.cribl.io/stream/'));

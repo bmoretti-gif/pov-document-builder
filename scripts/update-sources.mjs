@@ -1,8 +1,16 @@
 import {mkdir,writeFile} from 'node:fs/promises';
 import {buildSourceCatalog} from '../services/source-catalog.mjs';
+import {buildDestinationCatalog} from '../services/destination-catalog.mjs';
 const response=await fetch('https://docs.cribl.io/stream/sources.md',{signal:AbortSignal.timeout(30000),redirect:'error'});
 if(!response.ok) throw new Error(`Official Sources HTTP ${response.status}`);
 const catalog=buildSourceCatalog(await response.text());
+const destinationResponse=await fetch('https://docs.cribl.io/stream/destinations.md',{signal:AbortSignal.timeout(30000),redirect:'error'});
+if(!destinationResponse.ok) throw new Error(`Official Destinations HTTP ${destinationResponse.status}`);
+const destinations=buildDestinationCatalog(await destinationResponse.text());
+catalog.entries={...catalog.entries,...destinations.entries};
+catalog.translations={...catalog.translations,...destinations.translations};
+catalog.indexUrls=[catalog.indexUrl,destinations.indexUrl];
+catalog.checkedAt=destinations.checkedAt;
 await mkdir(new URL('../public/',import.meta.url),{recursive:true});
 await writeFile(new URL('../public/source-catalog.json',import.meta.url),JSON.stringify(catalog,null,2)+'\n');
-console.log(`Official catalog: ${Object.values(catalog.entries).filter(e=>e.sourceKind!=='collector').length} Sources, ${Object.values(catalog.entries).filter(e=>e.sourceKind==='collector').length} Collectors (${catalog.checkedAt})`);
+console.log(`Official catalog: ${Object.values(catalog.entries).filter(e=>e.category==='CRIBL SOURCE CONFIGS').length} Sources, ${Object.values(catalog.entries).filter(e=>e.sourceKind==='collector').length} Collectors, ${Object.keys(destinations.entries).length} Destinations (${catalog.checkedAt})`);

@@ -3,7 +3,7 @@ import {criblDocsPlugin} from '../services/cribl-docs.mjs';
 let handler;
 criblDocsPlugin().configureServer({middlewares:{use:(_path,fn)=>handler=fn}});
 const library=JSON.parse(await readFile(new URL('../default-library.json',import.meta.url),'utf8'));
-const urls=['https://docs.cribl.io/stream/sources.md', ...new Set(Object.values(library).flatMap(item=>item.content.match(/https:\/\/docs\.cribl\.io\/[^\s)"<>]+/g)??[]))];
+const urls=['https://docs.cribl.io/stream/sources.md', 'https://docs.cribl.io/stream/destinations.md', ...new Set(Object.values(library).flatMap(item=>item.content.match(/https:\/\/docs\.cribl\.io\/[^\s)"<>]+/g)??[]))];
 const request={method:'POST',async *[Symbol.asyncIterator](){yield JSON.stringify({urls});}};
 let result;
 await handler(request,{setHeader(){},end(body){result=JSON.parse(body);}});

@@ -1,0 +1,9 @@
+{
+  "url": "https://docs.cribl.io/stream/destinations-default/",
+  "checkedAt": "2026-11-06T14:26:46.528Z",
+  "hash": "a7b0a61dcd569807e7b1962b2787a916026a15ec8aacf9e990ddd1e87266fa5d",
+  "contents": {
+    "en": "# Default Destination\n\n\n\n\nThe **Default** Destination simply enables you to specify a default output from among your already-configured Destinations. \n\n> Type: Internal | TLS Support: N/A | PQ Support: N/A \n>\n\n\n## Configure Cribl Stream's Default Destination\n\nIn Cribl Stream configure Default.\n\n1. On the top bar, select **Products**, and then select **Cribl Stream**. Under **Worker Groups**, select a Worker Group. Next, you have two options:\n   - To configure via [QuickConnect](https://docs.cribl.io/stream/quickconnect), navigate to **Routing** > **QuickConnect** (Stream) or **Collect** (Edge). A **Default** Destination is preconfigured and ready to use in the right **Destinations** column. Hover over the tile and click its **Configure** button to proceed.\n   - To configure via the [Routes](https://docs.cribl.io/stream/routes), select **Data** > **Destinations** or **More** > **Destinations** (Edge). Select the Destination you want. From the resulting **Destinations** page, click anywhere on the `default` row to proceed.\n2. In the **New Destination** modal, configure the following under **General Settings**:\n    - **Output ID**: This is prefilled with the default value `default`, which cannot be changed via the UI.\n    - **Default Output ID** drop-down to select one of your configured Destinations.\n3. Select **Save**, then **Commit & Deploy**. \n\n## Preventing Circular References\n\nIf you've configured an [Output Router](https://docs.cribl.io/stream/destinations-output-router) Destination with a branch that points to this Default Destination (`default:default` ), you cannot select that Output Router here. This restriction prevents a circular dependency.\n"
+  },
+  "translationScope": {}
+}
